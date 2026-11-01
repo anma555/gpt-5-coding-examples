@@ -1,12 +1,12 @@
-# GPT-5* Coding Examples
+# GPT-5* コーディング例
 
-This repository contains a curated collection of demo applications **generated entirely in a single [GPT-5](https://platform.openai.com/docs/models/gpt-5) or [GPT-5.2](https://platform.openai.com/docs/models/gpt-5.2) prompt**, without writing any code by hand.
+このリポジトリは、コードを一切手書きせず、**[GPT-5](https://platform.openai.com/docs/models/gpt-5) または [GPT-5.2](https://platform.openai.com/docs/models/gpt-5.2) への単一のプロンプトだけで生成された**デモアプリケーションを厳選して集めたものです。
 
-These demos were selected to showcase the model’s strengths in coding — especially quickly scaffolding websites, front-end applications, games, and interactive UIs from natural-language descriptions. They’re intended as inspiration for you to build your own ideas.
+これらのデモは、モデルのコーディング能力、特に自然言語の説明から Web サイト、フロントエンドアプリケーション、ゲーム、インタラクティブな UI を素早く構築する強みを示すために選ばれました。ご自身のアイデアを形にするためのヒントとしてご活用ください。
 
-## Explore Examples
+## サンプルを見る
 
-You can explore the demos by cloning this repo and running it locally.
+このリポジトリをクローンしてローカルで実行すると、デモを閲覧できます。
 
 ```
 cd front-end
@@ -14,50 +14,50 @@ npm install
 npm run dev
 ```
 
-The app will be available at `localhost:3000`.
+アプリは `localhost:3000` で利用できます。
 
-You can also visit the [hosted version](https://gpt5-coding-examples.vercel.app/).
+[ホスト版](https://gpt5-coding-examples.vercel.app/)にアクセスすることもできます。
 
-From there, you can view any example, see the zero-shot prompt that created the code, and remix it for your own ideas.
+そこでは各サンプルを表示し、そのコードを生成したゼロショットプロンプトを確認し、ご自身のアイデアに合わせてアレンジできます。
 
-## Build with GPT-5
+## GPT-5 で作る
 
-If you want to experiment with similar prompts, you can try GPT-5 in your preferred coding environment:
+同様のプロンプトを試したい場合は、お好みのコーディング環境で GPT-5 を使えます。
 
-- **[Codex CLI](https://github.com/openai/codex)** – A lightweight coding agent that runs in your terminal.
-- **Your favorite IDE or coding tool** – Use GPT-5 within your existing workflow to generate and refine code.
-- **[ChatGPT](https://chatgpt.com)** – Open ChatGPT and choose GPT-5 to generate and preview code in the browser.
+- **[Codex CLI](https://github.com/openai/codex)** – ターミナルで動作する軽量なコーディングエージェント。
+- **お気に入りの IDE やコーディングツール** – 既存のワークフローの中で GPT-5 を使い、コードを生成・改善できます。
+- **[ChatGPT](https://chatgpt.com)** – ChatGPT を開いて GPT-5 を選択すると、ブラウザ上でコードを生成・プレビューできます。
 
-Choose an example, copy its prompt for inspiration, and adapt it to your own needs.  
-Let GPT-5 build your idea, then iterate on the prompt or code to explore variations.
+サンプルを選び、そのプロンプトを参考にコピーして、自分の用途に合わせて調整してください。  
+GPT-5 にアイデアを形にしてもらい、プロンプトやコードを繰り返し調整してバリエーションを探ってみましょう。
 
-### For Developers: Codex CLI
+### 開発者向け: Codex CLI
 
-We recommend using the [**Codex CLI**](https://github.com/openai/codex) with GPT-5 for a seamless coding experience.
+快適なコーディング体験のために、GPT-5 と [**Codex CLI**](https://github.com/openai/codex) の組み合わせをおすすめします。
 
-The Codex CLI runs in your terminal: given a prompt, it will generate code, execute it in a sandbox, and even preview the results live.
+Codex CLI はターミナルで動作し、プロンプトを与えるとコードを生成し、サンドボックスで実行し、結果をライブでプレビューすることもできます。
 
-Example:
+例:
 
 ```bash
 codex --model gpt-5 --full-auto "Build a simple photobooth application with camera access in a single HTML file"
 ```
 
-GPT-5 will scaffold the app, write files, install dependencies as needed, and show a live preview. This is the **go-to solution** for developers who want to bootstrap apps or add features quickly.
+GPT-5 がアプリの雛形を作成し、ファイルを書き出し、必要に応じて依存関係をインストールし、ライブプレビューを表示します。アプリを素早く立ち上げたり機能を追加したりしたい開発者にとって、**最適なソリューション**です。
 
-You can also use GPT-5 with any other AI coding tool that supports the model.
+GPT-5 に対応したその他の AI コーディングツールでも利用できます。
 
-### For Non-Developers: ChatGPT
+### 非開発者向け: ChatGPT
 
-If you don’t have a coding environment, you can use [**ChatGPT**](https://chatgpt.com) (with GPT-5) to build and preview apps entirely in the browser:
+コーディング環境がない場合でも、[**ChatGPT**](https://chatgpt.com)(GPT-5 使用)を使えば、ブラウザだけでアプリを作成・プレビューできます。
 
-1. Copy an example’s prompt for inspiration and customize it to make it your own.
-2. Let GPT-5 generate the code (HTML/CSS/JavaScript).
-3. Open it in **Canvas** preview to see it run live.
-4. Download or copy the output HTML for real-world use.
+1. サンプルのプロンプトを参考にコピーし、自分なりにカスタマイズします。
+2. GPT-5 にコード(HTML/CSS/JavaScript)を生成させます。
+3. **Canvas** プレビューで開き、実際に動作する様子を確認します。
+4. 出力された HTML をダウンロードまたはコピーして、実際に活用します。
 
-With this method, _anyone_ can create a working single-page app — no local setup required.
+この方法なら、ローカル環境のセットアップなしで、_誰でも_ 動作するシングルページアプリを作成できます。
 
 > [!NOTE]
-> We are not accepting contributions at this time.  
-> This repo is for **reference and inspiration only**. If you’d like to build on these ideas, please fork the repo for your own experiments.
+> 現在、コントリビューションは受け付けていません。  
+> このリポジトリは**参考およびインスピレーション専用**です。これらのアイデアを発展させたい場合は、リポジトリをフォークしてご自身で試してください。
