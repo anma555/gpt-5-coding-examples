@@ -11,6 +11,7 @@ export interface CodeExampleYAML {
   tags?: unknown;
   camera?: unknown;
   microphone?: unknown;
+  poster?: unknown; // 任意: ポスター画像の URL(例: /<slug>/poster.svg)。未指定なら CDN の画像を使う
 }
 
 export interface CodeExample {
@@ -45,13 +46,14 @@ function toCodeExample(
     tags?: string[];
     camera?: boolean;
     microphone?: boolean;
+    poster?: string;
   }
 ): CodeExample {
   return {
     id,
     title: data.title,
     prompt: data.prompt,
-    poster: `${CDN_BASE_URL}/${id}.png`,
+    poster: data.poster ?? `${CDN_BASE_URL}/${id}.png`,
     iframeUrl: `${IFRAME_BASE_URL}${id}`,
     tags: data.tags ?? [],
     camera: data.camera,
@@ -87,6 +89,8 @@ export async function loadApps(): Promise<CodeExample[]> {
           tags: toStringArray(obj.tags),
           camera: toBool(obj.camera),
           microphone: toBool(obj.microphone),
+          poster:
+            typeof obj.poster === "string" && obj.poster ? obj.poster : undefined,
         })
       );
     } catch {

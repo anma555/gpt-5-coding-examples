@@ -25,7 +25,7 @@ npm run lint    # next lint
 
 トップレベルの 3 つの要素が、共通の**スラッグ**(YAML ファイル名から拡張子を除いたもの)で結び付いています。
 
-- `examples/<slug>.yaml`: メタデータ。`title`(または旧形式の `name`)と `prompt` が必須で、どちらかが欠けているファイルは警告なしにスキップされます。任意フィールドは `tags`(文字列リスト)と `camera` / `microphone`(真偽値。`components/app-modal.tsx` で iframe の `allow` 権限になります)。YAML 内の `id` と `screenshot_url` は無視されます。スラッグはファイル名から決まり、ポスター画像は常に `https://cdn.openai.com/devhub/gpt5prompts/<slug>.png` です。
+- `examples/<slug>.yaml`: メタデータ。`title`(または旧形式の `name`)と `prompt` が必須で、どちらかが欠けているファイルは警告なしにスキップされます。任意フィールドは `tags`(文字列リスト)と `camera` / `microphone`(真偽値。`components/app-modal.tsx` で iframe の `allow` 権限になります)。YAML 内の `id` と `screenshot_url` は無視されます。スラッグはファイル名から決まり、ポスター画像は任意フィールド `poster`(例: `/<slug>/poster.svg` のように `apps/<slug>/` 内の画像)があればそれを、なければ `https://cdn.openai.com/devhub/gpt5prompts/<slug>.png` を使います。CDN に画像がない新規サンプルでは `poster` が必要です。
 - `apps/<slug>/index.html`: 生成されたアプリ。ほとんどは単一 HTML ファイルですが、一部(例: `asteroid-game`、`espresso`)は `_next/` アセットを含むビルド済みの Next.js 静的エクスポートです。GPT-5.2 版はスラッグに `-5.2` サフィックスが付きます。
 - `front-end/`: ギャラリー本体(Next 15 App Router、React 19、Tailwind v4、`components/ui` に shadcn/ui コンポーネント)。
 
@@ -36,7 +36,7 @@ npm run lint    # next lint
 3. `next.config.ts` は、`index.html` を含む `public/` 配下の各サブディレクトリについて `/<slug>` を `/<slug>/index.html` にリライトします。リライト一覧は設定読み込み時に計算されるため、アプリを追加したら開発サーバーを再起動してください。
 4. モーダルはアプリを iframe(`/<slug>`)で埋め込み、プロンプトを表示し、プロンプトを入力済みの ChatGPT へのリンクを提供します。
 
-つまり、サンプルを追加するには、対応する `examples/<slug>.yaml` と `apps/<slug>/index.html` を追加します。スクリーンショットは OpenAI の CDN から取得されます。
+つまり、サンプルを追加するには、対応する `examples/<slug>.yaml` と `apps/<slug>/index.html` を追加し、ポスター画像を `apps/<slug>/` に置いて YAML の `poster` で指定します(例: `quicksort-visualizer`)。
 
 ## 守ってほしいこと
 - ソースコード内のコメントは日本語で記述すること

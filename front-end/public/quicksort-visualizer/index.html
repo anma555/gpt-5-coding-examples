@@ -1,0 +1,729 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>クイックソート可視化</title>
+<style>
+  /* ===== 色・寸法のトークン(ライトテーマ) ===== */
+  :root {
+    --bg: #f8fafc;
+    --panel: #ffffff;
+    --border: #e2e8f0;
+    --text: #0f172a;
+    --muted: #64748b;
+    --accent: #2563eb;
+    --accent-text: #ffffff;
+    --code-bg: #f1f5f9;
+    --line-hl: #dbeafe;
+
+    /* 棒の状態ごとの色 */
+    --c-range: #94a3b8;   /* 分割中の範囲内・未処理 */
+    --c-out: #cbd5e1;     /* 現在の範囲外 */
+    --c-pivot: #e11d48;   /* ピボット */
+    --c-compare: #eab308; /* 比較中 */
+    --c-swap: #f97316;    /* 交換中 */
+    --c-le: #0ea5e9;      /* ピボット以下の領域 */
+    --c-gt: #8b5cf6;      /* ピボットより大きい領域 */
+    --c-sorted: #22c55e;  /* 位置が確定 */
+  }
+  /* ===== ダークテーマ ===== */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b1120;
+      --panel: #111827;
+      --border: #1f2937;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #3b82f6;
+      --code-bg: #0f172a;
+      --line-hl: #1e3a8a;
+      --c-range: #64748b;
+      --c-out: #334155;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", sans-serif;
+    line-height: 1.6;
+  }
+  header { padding: 20px 20px 0; max-width: 1200px; margin: 0 auto; }
+  h1 { margin: 0; font-size: 1.5rem; }
+  header p { margin: 4px 0 0; color: var(--muted); font-size: 0.9rem; }
+
+  main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 16px 20px 32px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 16px;
+  }
+  @media (max-width: 900px) {
+    main { grid-template-columns: minmax(0, 1fr); }
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .panel h2 { margin: 0 0 8px; font-size: 0.95rem; color: var(--muted); font-weight: 600; }
+  .col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+  /* ===== 棒グラフ ===== */
+  .viz { position: relative; }
+  .bars {
+    height: 320px;
+    display: flex;
+    align-items: flex-end;
+    gap: var(--gap, 4px);
+    padding-top: 8px;
+  }
+  .bar {
+    flex: 1 1 0;
+    min-width: 0;
+    border-radius: 4px 4px 0 0;
+    background: var(--c-range);
+    position: relative;
+    transition: height 0.18s ease, background-color 0.18s ease;
+  }
+  .bar .val {
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.72rem;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .bar.out { background: var(--c-out); }
+  .bar.le { background: var(--c-le); }
+  .bar.gt { background: var(--c-gt); }
+  .bar.sorted { background: var(--c-sorted); }
+  .bar.pivot { background: var(--c-pivot); }
+  .bar.compare { background: var(--c-compare); }
+  .bar.swap { background: var(--c-swap); }
+
+  /* 棒の下のマーカー行(i / j / ピボット・添字) */
+  .markers { display: flex; gap: var(--gap, 4px); margin-top: 4px; }
+  .marker {
+    flex: 1 1 0;
+    min-width: 0;
+    text-align: center;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 0.72rem;
+    line-height: 1.3;
+  }
+  .marker .idx { color: var(--muted); display: block; }
+  .marker .tag { display: block; font-weight: 700; min-height: 1.3em; color: var(--c-swap); }
+  .marker .tag.p { color: var(--c-pivot); }
+
+  /* 範囲の帯 */
+  .rangebar { position: relative; height: 6px; margin-top: 6px; }
+  .rangebar span {
+    position: absolute; top: 0; height: 6px; border-radius: 3px;
+    background: var(--accent); opacity: 0.5;
+    transition: left 0.18s ease, width 0.18s ease;
+  }
+
+  /* ===== 凡例 ===== */
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.8rem; margin-top: 12px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+  /* ===== 操作部 ===== */
+  .controls { display: flex; flex-direction: column; gap: 12px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  button, select {
+    font: inherit;
+    font-size: 0.9rem;
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    cursor: pointer;
+  }
+  button:hover:not(:disabled), select:hover { border-color: var(--accent); }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); min-width: 110px; }
+  button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  label.slider { display: inline-flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--muted); }
+  label.slider output { min-width: 2.2em; color: var(--text); font-variant-numeric: tabular-nums; }
+  input[type="range"] { accent-color: var(--accent); }
+  .progress { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--muted); }
+  .progress input { flex: 1; }
+  .progress output { font-variant-numeric: tabular-nums; min-width: 6em; text-align: right; }
+  .hint { font-size: 0.78rem; color: var(--muted); margin: 0; }
+  kbd {
+    font-family: ui-monospace, Menlo, monospace; font-size: 0.75rem;
+    border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px;
+  }
+
+  /* ===== 説明・擬似コード・スタック・統計 ===== */
+  .explain { font-size: 1rem; min-height: 3.2em; margin: 0; }
+  pre.code {
+    margin: 0;
+    background: var(--code-bg);
+    border-radius: 8px;
+    padding: 8px 0;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 0.8rem;
+    overflow-x: auto;
+  }
+  pre.code div { padding: 0 12px; white-space: pre; border-left: 3px solid transparent; }
+  pre.code div.active { background: var(--line-hl); border-left-color: var(--accent); }
+  pre.code .ln { color: var(--muted); display: inline-block; width: 2em; user-select: none; }
+
+  ol.stack { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column-reverse; gap: 4px; }
+  ol.stack li {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 0.8rem;
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  ol.stack li.top { border-color: var(--accent); color: var(--text); background: var(--line-hl); }
+  .empty { color: var(--muted); font-size: 0.85rem; }
+
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+  .stats div { background: var(--code-bg); border-radius: 8px; padding: 6px; }
+  .stats b { display: block; font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+  .stats span { font-size: 0.75rem; color: var(--muted); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bar, .rangebar span { transition: none; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>クイックソート可視化</h1>
+  <p>ピボットを選び、それより小さい値を左・大きい値を右に分ける(分割)処理を再帰的に繰り返す様子を、1 ステップずつ確認できます。</p>
+</header>
+
+<main>
+  <div class="col">
+    <section class="panel viz" aria-label="配列の可視化">
+      <div class="bars" id="bars" role="img" aria-label="配列の棒グラフ"></div>
+      <div class="rangebar" aria-hidden="true"><span id="rangeSpan"></span></div>
+      <div class="markers" id="markers" aria-hidden="true"></div>
+      <div class="legend" aria-label="凡例">
+        <span><i style="background:var(--c-pivot)"></i>ピボット</span>
+        <span><i style="background:var(--c-compare)"></i>比較中</span>
+        <span><i style="background:var(--c-swap)"></i>交換</span>
+        <span><i style="background:var(--c-le)"></i>ピボット以下</span>
+        <span><i style="background:var(--c-gt)"></i>ピボットより大きい</span>
+        <span><i style="background:var(--c-range)"></i>未処理(範囲内)</span>
+        <span><i style="background:var(--c-out)"></i>範囲外</span>
+        <span><i style="background:var(--c-sorted)"></i>位置が確定</span>
+      </div>
+    </section>
+
+    <section class="panel controls" aria-label="操作">
+      <div class="row">
+        <button id="btnReset" title="最初のステップに戻る">⏮ 最初へ</button>
+        <button id="btnBack" title="1 ステップ戻る(←)">◀ 戻る</button>
+        <button id="btnPlay" class="primary" title="再生 / 一時停止(Space)">▶ 再生</button>
+        <button id="btnStep" title="1 ステップ進む(→)">進む ▶</button>
+        <button id="btnEnd" title="最後のステップへ">最後へ ⏭</button>
+      </div>
+      <div class="progress">
+        <span>進行</span>
+        <input type="range" id="scrub" min="0" max="0" value="0" aria-label="ステップ位置" />
+        <output id="stepLabel">0 / 0</output>
+      </div>
+      <div class="row">
+        <label class="slider">速度
+          <input type="range" id="speed" min="1" max="10" value="5" />
+          <output id="speedLabel">5</output>
+        </label>
+        <label class="slider">要素数
+          <input type="range" id="size" min="5" max="50" value="12" />
+          <output id="sizeLabel">12</output>
+        </label>
+      </div>
+      <div class="row">
+        <select id="preset" aria-label="初期配列の種類">
+          <option value="random">ランダム</option>
+          <option value="nearly">ほぼ整列済み</option>
+          <option value="reversed">逆順</option>
+          <option value="dups">重複が多い</option>
+        </select>
+        <button id="btnNew">🎲 新しい配列</button>
+      </div>
+      <p class="hint">キーボード: <kbd>Space</kbd> 再生/一時停止 ・ <kbd>←</kbd><kbd>→</kbd> 1 ステップ移動</p>
+    </section>
+  </div>
+
+  <div class="col">
+    <section class="panel" aria-live="polite">
+      <h2>いま起きていること</h2>
+      <p class="explain" id="explain"></p>
+    </section>
+
+    <section class="panel">
+      <h2>擬似コード(Lomuto 分割)</h2>
+      <pre class="code" id="code"></pre>
+    </section>
+
+    <section class="panel">
+      <h2>再帰呼び出しスタック</h2>
+      <ol class="stack" id="stack"></ol>
+    </section>
+
+    <section class="panel">
+      <h2>統計</h2>
+      <div class="stats">
+        <div><b id="statComp">0</b><span>比較回数</span></div>
+        <div><b id="statSwap">0</b><span>交換回数</span></div>
+        <div><b id="statDepth">0</b><span>最大の再帰の深さ</span></div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+"use strict";
+
+// ===== 擬似コード(行番号は 1 始まりで、ステップの line と対応する) =====
+const CODE_LINES = [
+  "quickSort(a, lo, hi):",
+  "  if lo >= hi: return",
+  "  pivot ← a[hi]",
+  "  i ← lo − 1",
+  "  for j ← lo to hi − 1:",
+  "    if a[j] ≤ pivot:",
+  "      i ← i + 1",
+  "      swap(a[i], a[j])",
+  "  swap(a[i + 1], a[hi])   # ピボット確定",
+  "  quickSort(a, lo, i)     # 左側",
+  "  quickSort(a, i + 2, hi) # 右側",
+];
+
+// ===== 配列の生成 =====
+function randInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function makeArray(n, preset) {
+  const base = Array.from({ length: n }, () => randInt(5, 99));
+  switch (preset) {
+    case "nearly": {
+      // 整列済みの配列に、少しだけランダムな入れ替えを加える
+      const a = base.sort((x, y) => x - y);
+      const swapsCount = Math.max(1, Math.floor(n / 8));
+      for (let k = 0; k < swapsCount; k++) {
+        const p = randInt(0, n - 1);
+        const q = randInt(0, n - 1);
+        [a[p], a[q]] = [a[q], a[p]];
+      }
+      return a;
+    }
+    case "reversed":
+      return base.sort((x, y) => y - x);
+    case "dups": {
+      const values = [20, 40, 60, 80];
+      return Array.from({ length: n }, () => values[randInt(0, values.length - 1)]);
+    }
+    default:
+      return base;
+  }
+}
+
+// ===== クイックソートを実行し、すべてのステップを記録する =====
+// 各ステップは描画に必要な状態のスナップショットを持つので、前後どちらにも移動できる。
+function buildSteps(input) {
+  const a = input.slice();
+  const n = a.length;
+  const sorted = new Array(n).fill(false);
+  const stack = [];
+  const steps = [];
+  let comps = 0;
+  let swaps = 0;
+  let maxDepth = 0;
+  // 現在注目している分割の状態
+  let cur = { lo: -1, hi: -1, pivot: -1, i: null, j: null };
+
+  function record(line, msg, hl) {
+    steps.push({
+      arr: a.slice(),
+      sorted: sorted.slice(),
+      stack: stack.map((f) => ({ lo: f.lo, hi: f.hi })),
+      lo: cur.lo,
+      hi: cur.hi,
+      pivot: cur.pivot,
+      i: cur.i,
+      j: cur.j,
+      compare: (hl && hl.compare) || [],
+      swap: (hl && hl.swap) || [],
+      line,
+      msg,
+      comps,
+      swaps,
+      maxDepth,
+    });
+  }
+
+  function quickSort(lo, hi) {
+    stack.push({ lo, hi });
+    maxDepth = Math.max(maxDepth, stack.length);
+    cur = { lo, hi, pivot: -1, i: null, j: null };
+
+    if (lo >= hi) {
+      if (lo === hi) {
+        sorted[lo] = true;
+        record(2, `quickSort(${lo}, ${hi}):要素が 1 つ(a[${lo}] = ${a[lo]})だけなので、この位置で確定します。`);
+      } else {
+        record(2, `quickSort(${lo}, ${hi}):範囲が空なので、何もせずに戻ります。`);
+      }
+      stack.pop();
+      return;
+    }
+
+    record(1, `quickSort(${lo}, ${hi}) を開始。範囲 a[${lo}]〜a[${hi}](${hi - lo + 1} 個)を並べ替えます。`);
+
+    const pivotValue = a[hi];
+    cur.pivot = hi;
+    record(3, `末尾の a[${hi}] = ${pivotValue} をピボットに選びます。これ以下の値を左へ、大きい値を右へ集めます。`);
+
+    let i = lo - 1;
+    cur.i = i;
+    record(4, `i = ${i} に初期化。a[${lo}]〜a[i] が「ピボット以下の領域」で、今はまだ空です。`);
+
+    for (let j = lo; j < hi; j++) {
+      cur.j = j;
+      comps++;
+      const isLe = a[j] <= pivotValue;
+      record(
+        6,
+        `a[${j}] = ${a[j]} とピボット ${pivotValue} を比較 → ` +
+          (isLe ? "ピボット以下なので、左側の領域に入れます。" : "ピボットより大きいので、そのまま右側に残します。"),
+        { compare: [j, hi] }
+      );
+      if (isLe) {
+        i++;
+        cur.i = i;
+        if (i !== j) {
+          [a[i], a[j]] = [a[j], a[i]];
+          swaps++;
+          record([7, 8], `i を ${i} に進め、a[${i}] と a[${j}] を交換。ピボット以下の領域が 1 つ広がりました。`, { swap: [i, j] });
+        } else {
+          record([7, 8], `i を ${i} に進めます(i と j が同じ位置なので交換は不要)。`);
+        }
+      }
+    }
+
+    cur.j = null;
+    const p = i + 1;
+    if (p !== hi) {
+      [a[p], a[hi]] = [a[hi], a[p]];
+      swaps++;
+    }
+    sorted[p] = true;
+    cur.pivot = p;
+    cur.i = null;
+    record(
+      9,
+      (p !== hi
+        ? `ピボット ${pivotValue} を a[${p}] と交換して、ピボット以下の領域のすぐ右に置きます。`
+        : `ピボット ${pivotValue} はすでに正しい位置にあります。`) +
+        `位置 ${p} が確定し、左側はすべて ${pivotValue} 以下、右側はすべて ${pivotValue} より大きくなりました。`,
+      { swap: p !== hi ? [p, hi] : [] }
+    );
+
+    record(10, `左側 a[${lo}]〜a[${p - 1}] を再帰的にソートします。`);
+    quickSort(lo, p - 1);
+
+    cur = { lo, hi, pivot: p, i: null, j: null };
+    record(11, `左側が終わったので、quickSort(${lo}, ${hi}) に戻り、右側 a[${p + 1}]〜a[${hi}] を再帰的にソートします。`);
+    quickSort(p + 1, hi);
+
+    stack.pop();
+  }
+
+  cur = { lo: -1, hi: -1, pivot: -1, i: null, j: null };
+  record(0, `${n} 個の要素を並べ替えます。「再生」または「進む」を押して始めましょう。`);
+  quickSort(0, n - 1);
+  sorted.fill(true);
+  cur = { lo: -1, hi: -1, pivot: -1, i: null, j: null };
+  record(0, `ソート完了!比較 ${comps} 回、交換 ${swaps} 回で、すべての要素の位置が確定しました。`);
+  return steps;
+}
+
+// ===== アプリの状態 =====
+const state = {
+  steps: [],
+  index: 0,
+  timer: null,
+  maxValue: 100,
+};
+
+// ===== DOM 参照 =====
+const $ = (id) => document.getElementById(id);
+const els = {
+  bars: $("bars"),
+  markers: $("markers"),
+  rangeSpan: $("rangeSpan"),
+  explain: $("explain"),
+  code: $("code"),
+  stack: $("stack"),
+  statComp: $("statComp"),
+  statSwap: $("statSwap"),
+  statDepth: $("statDepth"),
+  btnReset: $("btnReset"),
+  btnBack: $("btnBack"),
+  btnPlay: $("btnPlay"),
+  btnStep: $("btnStep"),
+  btnEnd: $("btnEnd"),
+  scrub: $("scrub"),
+  stepLabel: $("stepLabel"),
+  speed: $("speed"),
+  speedLabel: $("speedLabel"),
+  size: $("size"),
+  sizeLabel: $("sizeLabel"),
+  preset: $("preset"),
+  btnNew: $("btnNew"),
+};
+let barEls = [];
+let markerEls = [];
+let codeEls = [];
+
+// 擬似コードの DOM を一度だけ組み立てる
+function buildCode() {
+  els.code.textContent = "";
+  codeEls = CODE_LINES.map((text, k) => {
+    const div = document.createElement("div");
+    const ln = document.createElement("span");
+    ln.className = "ln";
+    ln.textContent = String(k + 1);
+    div.append(ln, text);
+    els.code.append(div);
+    return div;
+  });
+}
+
+// 要素数が変わったときに棒とマーカーの DOM を作り直す
+function buildBars(n) {
+  els.bars.textContent = "";
+  els.markers.textContent = "";
+  const gap = n > 35 ? 2 : n > 20 ? 3 : 5;
+  els.bars.style.setProperty("--gap", gap + "px");
+  els.markers.style.setProperty("--gap", gap + "px");
+  barEls = [];
+  markerEls = [];
+  for (let k = 0; k < n; k++) {
+    const bar = document.createElement("div");
+    bar.className = "bar";
+    const val = document.createElement("span");
+    val.className = "val";
+    bar.append(val);
+    els.bars.append(bar);
+    barEls.push(bar);
+
+    const m = document.createElement("div");
+    m.className = "marker";
+    const tag = document.createElement("span");
+    tag.className = "tag";
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    m.append(tag, idx);
+    els.markers.append(m);
+    markerEls.push(m);
+  }
+}
+
+// 1 本の棒の状態クラスを決める(優先度の高い順に判定)
+function barClass(s, k) {
+  if (s.swap.includes(k)) return "swap";
+  if (s.compare.includes(k) && k !== s.pivot) return "compare";
+  if (k === s.pivot) return "pivot";
+  if (s.sorted[k]) return "sorted";
+  if (s.lo < 0 || k < s.lo || k > s.hi) return "out";
+  if (s.i !== null && k <= s.i) return "le";
+  if (s.j !== null && k <= s.j) return "gt";
+  return "range";
+}
+
+// 現在のステップを画面に反映する
+function render() {
+  const s = state.steps[state.index];
+  const n = s.arr.length;
+  const showValues = n <= 24;
+  const showIndex = n <= 30;
+
+  for (let k = 0; k < n; k++) {
+    const bar = barEls[k];
+    bar.style.height = Math.max(2, (s.arr[k] / state.maxValue) * 100) + "%";
+    bar.className = "bar " + barClass(s, k);
+    bar.firstChild.textContent = showValues ? String(s.arr[k]) : "";
+
+    // i / j / p のマーカー
+    const tags = [];
+    if (k === s.pivot) tags.push("p");
+    if (s.i !== null && k === s.i) tags.push("i");
+    if (s.j !== null && k === s.j) tags.push("j");
+    const tagEl = markerEls[k].firstChild;
+    tagEl.textContent = tags.join(",");
+    tagEl.className = "tag" + (tags[0] === "p" ? " p" : "");
+    markerEls[k].lastChild.textContent = showIndex ? String(k) : "";
+  }
+
+  // 現在の範囲を示す帯
+  if (s.lo >= 0 && s.hi >= s.lo) {
+    const w = 100 / n;
+    els.rangeSpan.style.display = "block";
+    els.rangeSpan.style.left = s.lo * w + "%";
+    els.rangeSpan.style.width = (s.hi - s.lo + 1) * w + "%";
+  } else {
+    els.rangeSpan.style.display = "none";
+  }
+
+  // 説明文
+  let msg = s.msg;
+  if (s.i !== null && s.i < s.lo) msg += `(i = ${s.i} は範囲の左外を指しています)`;
+  els.explain.textContent = msg;
+
+  // 擬似コードのハイライト
+  const lines = Array.isArray(s.line) ? s.line : [s.line];
+  codeEls.forEach((div, k) => div.classList.toggle("active", lines.includes(k + 1)));
+
+  // 再帰呼び出しスタック
+  els.stack.textContent = "";
+  if (s.stack.length === 0) {
+    const li = document.createElement("li");
+    li.className = "empty";
+    li.style.border = "none";
+    li.textContent = state.index === state.steps.length - 1 ? "すべての呼び出しが終了しました" : "まだ呼び出していません";
+    els.stack.append(li);
+  } else {
+    s.stack.forEach((f, k) => {
+      const li = document.createElement("li");
+      li.textContent = `${"  ".repeat(k)}quickSort(${f.lo}, ${f.hi})`;
+      if (k === s.stack.length - 1) li.className = "top";
+      els.stack.append(li);
+    });
+  }
+
+  // 統計と進行状況
+  els.statComp.textContent = s.comps;
+  els.statSwap.textContent = s.swaps;
+  els.statDepth.textContent = s.maxDepth;
+  els.scrub.value = state.index;
+  els.stepLabel.textContent = `${state.index} / ${state.steps.length - 1}`;
+
+  const atStart = state.index === 0;
+  const atEnd = state.index === state.steps.length - 1;
+  els.btnBack.disabled = atStart;
+  els.btnReset.disabled = atStart;
+  els.btnStep.disabled = atEnd;
+  els.btnEnd.disabled = atEnd;
+}
+
+// ===== 再生制御 =====
+const DELAYS = [1400, 1000, 750, 550, 400, 280, 190, 120, 70, 30];
+
+function isPlaying() {
+  return state.timer !== null;
+}
+
+function setPlayButton() {
+  els.btnPlay.textContent = isPlaying() ? "⏸ 一時停止" : "▶ 再生";
+}
+
+function stop() {
+  if (state.timer !== null) clearTimeout(state.timer);
+  state.timer = null;
+  setPlayButton();
+}
+
+function tick() {
+  if (state.index >= state.steps.length - 1) {
+    stop();
+    return;
+  }
+  state.index++;
+  render();
+  state.timer = setTimeout(tick, DELAYS[Number(els.speed.value) - 1]);
+}
+
+function play() {
+  // 最後まで再生済みなら最初からやり直す
+  if (state.index >= state.steps.length - 1) state.index = 0;
+  render();
+  state.timer = setTimeout(tick, DELAYS[Number(els.speed.value) - 1]);
+  setPlayButton();
+}
+
+function togglePlay() {
+  if (isPlaying()) stop();
+  else play();
+}
+
+function goTo(index) {
+  state.index = Math.min(Math.max(0, index), state.steps.length - 1);
+  render();
+}
+
+// 新しい配列を作ってステップを計算し直す
+function newArray() {
+  stop();
+  const n = Number(els.size.value);
+  const arr = makeArray(n, els.preset.value);
+  state.maxValue = Math.max(100, ...arr);
+  state.steps = buildSteps(arr);
+  state.index = 0;
+  els.scrub.max = String(state.steps.length - 1);
+  buildBars(n);
+  render();
+}
+
+// ===== イベント =====
+els.btnPlay.addEventListener("click", togglePlay);
+els.btnStep.addEventListener("click", () => { stop(); goTo(state.index + 1); });
+els.btnBack.addEventListener("click", () => { stop(); goTo(state.index - 1); });
+els.btnReset.addEventListener("click", () => { stop(); goTo(0); });
+els.btnEnd.addEventListener("click", () => { stop(); goTo(state.steps.length - 1); });
+els.scrub.addEventListener("input", () => { stop(); goTo(Number(els.scrub.value)); });
+els.btnNew.addEventListener("click", newArray);
+els.preset.addEventListener("change", newArray);
+els.size.addEventListener("input", () => {
+  els.sizeLabel.textContent = els.size.value;
+  newArray();
+});
+els.speed.addEventListener("input", () => {
+  els.speedLabel.textContent = els.speed.value;
+});
+
+document.addEventListener("keydown", (e) => {
+  const tag = e.target && e.target.tagName;
+  // スライダーやセレクトの操作中は、その要素本来のキー操作を優先する
+  if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
+  if (e.key === " ") {
+    e.preventDefault();
+    togglePlay();
+  } else if (e.key === "ArrowRight") {
+    e.preventDefault();
+    stop();
+    goTo(state.index + 1);
+  } else if (e.key === "ArrowLeft") {
+    e.preventDefault();
+    stop();
+    goTo(state.index - 1);
+  }
+});
+
+// ===== 初期化 =====
+buildCode();
+newArray();
+</script>
+</body>
+</html>
