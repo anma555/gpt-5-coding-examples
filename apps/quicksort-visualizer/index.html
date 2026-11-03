@@ -121,8 +121,11 @@
     font-size: 0.72rem;
     line-height: 1.3;
   }
-  .marker .idx { color: var(--muted); display: block; }
-  .marker .tag { display: block; font-weight: 700; min-height: 1.3em; color: var(--c-swap); }
+  /* 文字が棒の幅より広くても左右均等にはみ出すよう、flex で中央に寄せる */
+  .marker .idx { color: var(--muted); display: flex; justify-content: center; white-space: nowrap; min-height: 1.3em; }
+  .marker .tag { display: flex; justify-content: center; white-space: nowrap; font-weight: 700; min-height: 1.3em; color: var(--c-swap); }
+  /* 要素数が多いときはマーカーの文字を小さくする */
+  .markers.dense .marker { font-size: 0.62rem; }
   .marker .tag.p { color: var(--c-pivot); }
 
   /* 範囲の帯 */
@@ -182,7 +185,8 @@
   pre.code div.active { background: var(--line-hl); border-left-color: var(--accent); }
   pre.code .ln { color: var(--muted); display: inline-block; width: 2em; user-select: none; }
 
-  ol.stack { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column-reverse; gap: 4px; }
+  /* 再帰が深くなっても panel が伸びすぎないよう、高さに上限を設けてスクロールさせる */
+  ol.stack { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 240px; overflow-y: auto; }
   ol.stack li {
     font-family: ui-monospace, Menlo, Consolas, monospace;
     font-size: 0.8rem;
@@ -243,12 +247,12 @@
       </div>
       <div class="row">
         <label class="slider">速度
-          <input type="range" id="speed" min="1" max="10" value="5" />
-          <output id="speedLabel">5</output>
+          <input type="range" id="speed" min="1" max="12" value="6" />
+          <output id="speedLabel">6</output>
         </label>
         <label class="slider">要素数
-          <input type="range" id="size" min="5" max="50" value="12" />
-          <output id="sizeLabel">12</output>
+          <input type="range" id="size" min="5" max="100" value="30" />
+          <output id="sizeLabel">30</output>
         </label>
       </div>
       <div class="row">
@@ -515,9 +519,10 @@ function buildCode() {
 function buildBars(n) {
   els.bars.textContent = "";
   els.markers.textContent = "";
-  const gap = n > 35 ? 2 : n > 20 ? 3 : 5;
+  const gap = n > 60 ? 1 : n > 35 ? 2 : n > 20 ? 3 : 5;
   els.bars.style.setProperty("--gap", gap + "px");
   els.markers.style.setProperty("--gap", gap + "px");
+  els.markers.classList.toggle("dense", n > 40);
   barEls = [];
   markerEls = [];
   for (let k = 0; k < n; k++) {
@@ -558,7 +563,8 @@ function render() {
   const s = state.steps[state.index];
   const n = s.arr.length;
   const showValues = n <= 24;
-  const showIndex = n <= 30;
+  // 要素数が多いときは、添字を 10 ごとにだけ表示する
+  const showIndexAt = (k) => n <= 30 || k % 10 === 0;
 
   for (let k = 0; k < n; k++) {
     const bar = barEls[k];
@@ -574,7 +580,7 @@ function render() {
     const tagEl = markerEls[k].firstChild;
     tagEl.textContent = tags.join(",");
     tagEl.className = "tag" + (tags[0] === "p" ? " p" : "");
-    markerEls[k].lastChild.textContent = showIndex ? String(k) : "";
+    markerEls[k].lastChild.textContent = showIndexAt(k) ? String(k) : "";
   }
 
   // 現在の範囲を示す帯
@@ -605,12 +611,15 @@ function render() {
     li.textContent = state.index === state.steps.length - 1 ? "すべての呼び出しが終了しました" : "まだ呼び出していません";
     els.stack.append(li);
   } else {
-    s.stack.forEach((f, k) => {
+    // 実行中の呼び出し(スタックの一番上)を先頭に表示する
+    for (let k = s.stack.length - 1; k >= 0; k--) {
+      const f = s.stack[k];
       const li = document.createElement("li");
-      li.textContent = `${"  ".repeat(k)}quickSort(${f.lo}, ${f.hi})`;
+      li.textContent = `深さ ${k + 1}: quickSort(${f.lo}, ${f.hi})`;
       if (k === s.stack.length - 1) li.className = "top";
       els.stack.append(li);
-    });
+    }
+    els.stack.scrollTop = 0;
   }
 
   // 統計と進行状況
@@ -629,7 +638,26 @@ function render() {
 }
 
 // ===== 再生制御 =====
-const DELAYS = [1400, 1000, 750, 550, 400, 280, 190, 120, 70, 30];
+// 速度ごとの更新間隔(ミリ秒)と、1 回の更新で進めるステップ数。
+// 要素数が多いとステップ数が数千になるため、高速側では 1 回に複数ステップ進める。
+const SPEEDS = [
+  { delay: 1400, steps: 1 },
+  { delay: 1000, steps: 1 },
+  { delay: 750, steps: 1 },
+  { delay: 550, steps: 1 },
+  { delay: 400, steps: 1 },
+  { delay: 280, steps: 1 },
+  { delay: 190, steps: 1 },
+  { delay: 120, steps: 1 },
+  { delay: 70, steps: 1 },
+  { delay: 30, steps: 1 },
+  { delay: 16, steps: 3 },
+  { delay: 16, steps: 10 },
+];
+
+function currentSpeed() {
+  return SPEEDS[Number(els.speed.value) - 1];
+}
 
 function isPlaying() {
   return state.timer !== null;
@@ -650,16 +678,17 @@ function tick() {
     stop();
     return;
   }
-  state.index++;
+  const speed = currentSpeed();
+  state.index = Math.min(state.index + speed.steps, state.steps.length - 1);
   render();
-  state.timer = setTimeout(tick, DELAYS[Number(els.speed.value) - 1]);
+  state.timer = setTimeout(tick, speed.delay);
 }
 
 function play() {
   // 最後まで再生済みなら最初からやり直す
   if (state.index >= state.steps.length - 1) state.index = 0;
   render();
-  state.timer = setTimeout(tick, DELAYS[Number(els.speed.value) - 1]);
+  state.timer = setTimeout(tick, currentSpeed().delay);
   setPlayButton();
 }
 
