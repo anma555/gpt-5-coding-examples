@@ -27,6 +27,6 @@ reviews:
         - 既存のディレクトリ構成・命名・状態管理の流儀にそろっているか確認すること。
     - path: "examples/*.yaml"
       instructions: |
-        - title と prompt が必須(どちらかが欠けるとギャラリーに表示されない)。
+        - title(または旧形式の name)と prompt が必須(どちらかが欠けるとギャラリーに表示されない)。title がなくても name があれば表示されるので、旧形式の YAML に title を追加するよう求めないこと。
         - ファイル名(スラッグ)に対応する apps/<slug>/index.html が存在するか確認すること。
         - CDN にポスター画像がない新規サンプルでは poster フィールドが必要。
