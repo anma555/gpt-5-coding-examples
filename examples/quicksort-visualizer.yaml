@@ -4,7 +4,7 @@ prompt: |
   Create a single-page app, in a single HTML file with no external dependencies, that helps learners visually understand how quicksort works. All UI text should be in Japanese.
   Algorithm: Lomuto partition scheme (last element as pivot). Pre-compute the whole sort as a list of steps (each step stores a snapshot of the array, highlighted indices, pivot, i/j pointers, current range, recursion stack, pseudocode line, counters and a Japanese explanation) so the user can step both forward and backward.
   Visualization: array drawn as vertical bars with values shown when there are few elements; distinct colors with a legend for pivot, compared elements, swapped elements, the current partition range, finalized (sorted) elements and untouched elements; i / j / pivot markers under the bars.
-  Controls: play/pause, step forward, step back, reset, speed slider, element-count slider (5–50), new array button, and presets (random, nearly sorted, reversed, many duplicates).
+  Controls: play/pause, step forward, step back, reset, speed slider, element-count slider (5–100, default 30), new array button, and presets (random, nearly sorted, reversed, many duplicates).
   Learning panels: a plain-language explanation of the current step, the recursion call stack (quickSort(lo, hi)) with the active call highlighted, comparison and swap counters, and pseudocode with the currently executing line highlighted.
   Keyboard shortcuts (Space: play/pause, ←/→: step), responsive layout, light/dark theme via prefers-color-scheme, and respect prefers-reduced-motion.
 poster: /quicksort-visualizer/poster.svg
